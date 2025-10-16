@@ -1,0 +1,14 @@
+#!/ bin / bash
+#PBS -N addit # Job name
+#PBS -o ./array_addition.out # Output files
+#PBS -e ./array_addition.err # Error files
+#PBS -q short_cpuQ # Queue name
+#PBS -l walltime=0:02:00 # Set the maximum wall time
+#PBS -l select=1:ncpus=1
+#PBS -l mem=1mb # Set the memory
+# Load modules
+module load gcc91
+# Select the working directory
+cd home/Jacopo.marchesin/testfolder
+gcc array_addition.c -o arr_add
+./arr_add

@@ -1,0 +1,9 @@
+valgrind --tool=cachegrind ./matr
+
+perf stat -e L1-dcache-loads,L1-dcache-load-misses,LLC-loads,LLC-load-misses,cache-misses,cache-references ./mv_opt_fast
+
+don't use perf and valgrind when calculating speedup: they affect cpu time. 
+
+flags: -O0, O1, -O2, -O3, -Ofast
+
+
