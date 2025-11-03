@@ -3,10 +3,26 @@
 #include <time.h>
 
 
-
+int import_matrix(const char *filename, 
+            float **out_matrix, 
+            int *out_rows, 
+            int *out_cols);
 float * generate_matrix(int rows, int cols, int percent_nonzero);
+float * generate_vector(int size);
 
 
+int import_matrix(const char *filename, 
+            float **out_matrix, 
+            int *out_rows, 
+            int *out_cols) {
+    FILE *file = fopen(filename, "r");
+    if (!file) {
+        perror("Failed to open file");
+        return 0;
+    }
+//if fscanf
+        return -1;
+    }
 float * generate_matrix(int rows, int cols, int percent_nonzero) {
     if (rows <= 0 || cols <= 0 || percent_nonzero < 0 || percent_nonzero > 100)
         return NULL;
