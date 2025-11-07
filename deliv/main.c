@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <omp.h>
 #include "generator.h"
 #include "m_to_csr.h"
 
@@ -65,18 +66,18 @@ int main(int argc, char* argv[]) {
    thread_count = atoi(argv[1]);
    thread_handles = malloc(thread_count*sizeof(pthread_t));
 
-   printf("Enter number of rows and number of columns\n");
-   scanf("%d%d", &m, &n);
+   // printf("Enter number of rows and number of columns\n");
+   // scanf("%d%d", &m, &n);
 
-   printf("Enter desired integer percentage of nonzero entries (0-100)\n");
-   scanf("%d", &percent_nonzero);
+   // printf("Enter desired integer percentage of nonzero entries (0-100)\n");
+   // scanf("%d", &percent_nonzero);
 
-   A = generate_matrix(m, n, percent_nonzero);
+   A = import_matrix("1138_bus.mtx", &m, &n);
    x = generate_vector(n);
    y = malloc((size_t)m * sizeof(float));
    
    Print_matrix("Matrix:", A, m, n);
-   
+      
    csr_matrix *csr_A;
    int result = matrix_to_csr(
       A,
