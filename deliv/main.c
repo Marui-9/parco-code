@@ -101,31 +101,40 @@ int main(int argc, char* argv[]) {
 
    //Read_vector("Enter the vector", x, n);
    //Print_vector("Vector: ", x, n);
-//---------SERIAL VERSION---------
-   start_time_serial = omp_get_wtime(); //start timer
-   serial_mat_vect(A, x, y, m, n);
-   end_time_serial = omp_get_wtime();
 
-   printf("Serial execution time: %.6f seconds\n", end_time_serial - start_time_serial);
-//---------PTHREADS VERSION---------
-   // for (thread = 0; thread < thread_count; thread++) {
-   //    printf("Creating thread %ld\n", thread);
-   //    pthread_create(&thread_handles[thread], NULL,
-   //       Pth_mat_vect, (void*) thread);
-   // }
+   // Run multiple iterations to get average performance
+   int num_iterations = 10;
+   double total_serial_time = 0.0;
+   double total_parallel_time = 0.0;
+   
+   printf("\nRunning %d iterations...\n", num_iterations);
+    printf("Using OpenMP with %d threads\n", thread_count);
+   for (int iter = 0; iter < num_iterations; iter++) {
+      printf("Iteration %d/%d\n", iter + 1, num_iterations);
+      
+      //---------SERIAL VERSION---------
+      start_time_serial = omp_get_wtime();
+      serial_mat_vect(A, x, y, m, n);
+      end_time_serial = omp_get_wtime();
+      total_serial_time += (end_time_serial - start_time_serial);
+      
+      //---------OPENMP VERSION----------
+      start_time = omp_get_wtime();
+      Omp_mat_vect(thread_count, csr_A);
+      end_time = omp_get_wtime();
+      total_parallel_time += (end_time - start_time);
+   }
+   
+   // Calculate averages
+   double avg_serial_time = total_serial_time / num_iterations;
+   double avg_parallel_time = total_parallel_time / num_iterations;
+   double avg_speedup = avg_serial_time / avg_parallel_time;
+   
+   printf("\n=== Results (averaged over %d iterations) ===\n", num_iterations);
+   printf("Average serial execution time:   %.6f seconds\n", avg_serial_time);
+   printf("Average parallel execution time: %.6f seconds\n", avg_parallel_time);
+   printf("Average speedup: %.2fx\n", avg_speedup);
 
-
-   // for (thread = 0; thread < thread_count; thread++)
-   //    pthread_join(thread_handles[thread], NULL);
-//----------------------------------
-//---------OPENMP VERSION----------
-   start_time = omp_get_wtime(); //start timer
-   Omp_mat_vect(thread_count, csr_A);
-   end_time = omp_get_wtime();
-
-   printf("Parallel execution time: %.6f seconds\n", end_time - start_time);
-   printf("Speedup: %.2f times faster\n", \
-      (end_time_serial - start_time_serial) / (end_time - start_time));
    free(A);
    free(x);
    //free(y); causes core dump
@@ -221,7 +230,6 @@ void *Pth_mat_vect(void* rank) {
  */
 void Omp_mat_vect(int thread_count, csr_matrix *csr_A) {
    int i, j;
-   printf("Using OpenMP with %d threads\n", thread_count);
    #pragma omp parallel for num_threads(thread_count) \
       default(none) shared(csr_A, x, y, m, n) private(i, j)
    for (i = 0; i < m; i++) {
