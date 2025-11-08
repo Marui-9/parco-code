@@ -32,6 +32,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <pthread.h>
 #include <omp.h>
 #include "generator.h"
@@ -44,6 +45,8 @@ int     percent_nonzero;
 float* A; // The matrix
 float* x; // The input vector
 float* y; // The output vector
+double start_time_serial, end_time_serial;
+double start_time, end_time;
 
 /* Serial functions */
 void Usage(char* prog_name);
@@ -51,32 +54,37 @@ void Read_matrix(char* prompt, float A[], int m, int n);
 void Read_vector(char* prompt, float x[], int n);
 void Print_matrix(char* title, float A[], int m, int n);
 void Print_vector(char* title, float y[], int m);
+void serial_mat_vect(float A[], float x[], float y[], int m, int n);
 
-/* Parallel function */
+/* Parallel functions */
 void *Pth_mat_vect(void* rank);
+void Omp_mat_vect(int thread_count, csr_matrix *csr_A);
 
 /*------------------------------------------------------------------*/
 int main(int argc, char* argv[]) {
-   long       thread;
-   pthread_t* thread_handles;
+   //long       thread;
+   //pthread_t* thread_handles;
 
    srand((unsigned)time(NULL));
-
-   if (argc != 2) Usage(argv[0]);
+   if (argc != 3) Usage(argv[0]);
    thread_count = atoi(argv[1]);
-   thread_handles = malloc(thread_count*sizeof(pthread_t));
+   //matrix file path
+   char matrix_file[256];
+   snprintf(matrix_file, sizeof(matrix_file), "matrices/%s", argv[2]);
+   
+   printf("Using %d threads and matrix file: %s\n", thread_count, matrix_file);
+  // thread_handles = malloc(thread_count*sizeof(pthread_t));
 
    // printf("Enter number of rows and number of columns\n");
    // scanf("%d%d", &m, &n);
 
    // printf("Enter desired integer percentage of nonzero entries (0-100)\n");
    // scanf("%d", &percent_nonzero);
-
-   A = import_matrix("1138_bus.mtx", &m, &n);
+   A = import_matrix(matrix_file, &m, &n);
    x = generate_vector(n);
    y = malloc((size_t)m * sizeof(float));
-   
-   Print_matrix("Matrix:", A, m, n);
+   printf("Matrix loaded from file: %s\n", matrix_file);
+   //Print_matrix("Matrix:", A, m, n);
       
    csr_matrix *csr_A;
    int result = matrix_to_csr(
@@ -92,23 +100,36 @@ int main(int argc, char* argv[]) {
     }
 
    //Read_vector("Enter the vector", x, n);
-   Print_vector("Vector: ", x, n);
+   //Print_vector("Vector: ", x, n);
+//---------SERIAL VERSION---------
+   start_time_serial = omp_get_wtime(); //start timer
+   serial_mat_vect(A, x, y, m, n);
+   end_time_serial = omp_get_wtime();
 
-   for (thread = 0; thread < thread_count; thread++) {
-      printf("Creating thread %ld\n", thread);
-      pthread_create(&thread_handles[thread], NULL,
-         Pth_mat_vect, (void*) thread);
-   }
+   printf("Serial execution time: %.6f seconds\n", end_time_serial - start_time_serial);
+//---------PTHREADS VERSION---------
+   // for (thread = 0; thread < thread_count; thread++) {
+   //    printf("Creating thread %ld\n", thread);
+   //    pthread_create(&thread_handles[thread], NULL,
+   //       Pth_mat_vect, (void*) thread);
+   // }
 
-   for (thread = 0; thread < thread_count; thread++)
-      pthread_join(thread_handles[thread], NULL);
 
-   Print_vector("The product is", y, m);
+   // for (thread = 0; thread < thread_count; thread++)
+   //    pthread_join(thread_handles[thread], NULL);
+//----------------------------------
+//---------OPENMP VERSION----------
+   start_time = omp_get_wtime(); //start timer
+   Omp_mat_vect(thread_count, csr_A);
+   end_time = omp_get_wtime();
 
+   printf("Parallel execution time: %.6f seconds\n", end_time - start_time);
+   printf("Speedup: %.2f times faster\n", \
+      (end_time_serial - start_time_serial) / (end_time - start_time));
    free(A);
    free(x);
    //free(y); causes core dump
-   print_csr(csr_A);
+   //print_csr(csr_A);
    csr_free(csr_A);
    return 0; 
 }  /* main */
@@ -121,7 +142,7 @@ int main(int argc, char* argv[]) {
  * In arg :   prog_name
  */
 void Usage (char* prog_name) {
-   fprintf(stderr, "usage: %s <thread_count>\n", prog_name);
+   fprintf(stderr, "usage: %s <thread_count> <matrix_file>\n", prog_name);
    exit(0);
 }  /* Usage */
 
@@ -155,6 +176,18 @@ void Read_vector(char* prompt, float x[], int n) {
       scanf("%f", &x[i]);
 }  /* Read_vector */
 
+/* Function: serial_mat_vect 
+   Purpose: multiply a mxn matrix by a nx1 column vector
+   */
+void serial_mat_vect(float A[], float x[], float y[], int m, int n) {
+   int i, j;
+   for (i = 0; i < m; i++){
+       y[i] = 0.0f;  // row result
+       for (j = 0; j < n; j++){
+            y[i] += A[i*n + j] * x[j]; 
+       }  
+   }
+}
 
 /*------------------------------------------------------------------
  * Function:       Pth_mat_vect
@@ -178,6 +211,26 @@ void *Pth_mat_vect(void* rank) {
 
    return NULL;
 }  /* Pth_mat_vect */
+
+
+/*------------------------------------------------------------------
+ * Function:       Omp_mat_vect
+ * Purpose:        Multiply an mxn matrix by an nx1 column vector using OpenMP
+ * Global in vars: A, x, m, n, thread_count
+ * Global out var: y
+ */
+void Omp_mat_vect(int thread_count, csr_matrix *csr_A) {
+   int i, j;
+   printf("Using OpenMP with %d threads\n", thread_count);
+   #pragma omp parallel for num_threads(thread_count) \
+      default(none) shared(csr_A, x, y, m, n) private(i, j)
+   for (i = 0; i < m; i++) {
+     // printf("Thread %d processing row %d\n", omp_get_thread_num(), i);
+      y[i] = 0.0f;
+      for (j = 0; j < n; j++)
+         y[i] += csr_A->values[csr_A->row_ptr[i] + j] * x[csr_A->col_ind[csr_A->row_ptr[i] + j]];
+   }
+}  /* Omp_mat_vect */
 
 
 /*------------------------------------------------------------------
