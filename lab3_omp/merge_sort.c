@@ -12,7 +12,6 @@ static inline int omp_get_max_threads(void) { return 1; }
 static inline double omp_get_wtime(void) { return (double)clock() / CLOCKS_PER_SEC; }
 #endif
 
-#define TASK_THRESHOLD 50000
 /* Problem parameters */
 int* a = NULL;
 int length = 900000;
@@ -123,7 +122,7 @@ int * merge_sort_parallel(int *array, int len){
     }
 
     /* Use a threshold to avoid creating too many small tasks */
-    if (len <= TASK_THRESHOLD) {
+    if (len <= length / (omp_get_max_threads())) {
         return merge_sort_serial(array, len);
     }
 

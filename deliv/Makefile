@@ -30,3 +30,4 @@ clean:
 
 run: all
 	./$(OUT)
+#echo "Array size: 5 million elements" && for threads in 1 2 4 8 12 16; do echo "Threads: $threads"; ./merge_sort $threads 5000000 | tail -3; echo; done

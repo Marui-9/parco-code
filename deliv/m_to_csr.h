@@ -3,6 +3,7 @@
 
 #include <stddef.h>   /* size_t */
 #include <errno.h> 
+#include <time.h>
 
 typedef struct {
     int rows;
