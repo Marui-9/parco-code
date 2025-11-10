@@ -9,9 +9,10 @@
 #else
 static inline void omp_set_num_threads(int n) { (void)n; }
 static inline int omp_get_max_threads(void) { return 1; }
+static inline double omp_get_wtime(void) { return (double)clock() / CLOCKS_PER_SEC; }
 #endif
-clock_t start, end;
-#define TASK_THRESHOLD 1024
+
+#define TASK_THRESHOLD 50000
 /* Problem parameters */
 int* a = NULL;
 int length = 900000;
@@ -44,14 +45,15 @@ int main(int argc, char* argv[]) {
     printf("Unsorted array:\n");
    // print_array(a, length);
    
-   start = clock();
-    int * sorted = merge_sort_serial(a, length);
-   end = clock();
-   printf("Elapsed time serial = %f seconds\n", (double)(end - start) / CLOCKS_PER_SEC);
+   double start_time = omp_get_wtime();
+   int * sorted = merge_sort_serial(a, length);
+   double end_time = omp_get_wtime();
+   double serial_time = end_time - start_time;
+   printf("Elapsed time serial = %.6f seconds\n", serial_time);
    free(sorted);
 
    /* Parallel run: create a single parallel region and spawn tasks inside it. */
-   start = clock();
+   start_time = omp_get_wtime();
    int * sorted_parallel = NULL;
    #pragma omp parallel
    {
@@ -60,9 +62,11 @@ int main(int argc, char* argv[]) {
            sorted_parallel = merge_sort_parallel(a, length);
        }
    }
-   end = clock();
+   end_time = omp_get_wtime();
+   double parallel_time = end_time - start_time;
 
-   printf("Elapsed time parallel = %f seconds\n", (double)(end - start) / CLOCKS_PER_SEC);
+   printf("Elapsed time parallel = %.6f seconds\n", parallel_time);
+   printf("Speedup = %.2fx\n", parallel_time > 0 ? (serial_time / parallel_time) : 0.0);
    free(sorted_parallel);
    return 0;
 }
