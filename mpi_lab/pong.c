@@ -54,9 +54,11 @@ int main
  double end_time = MPI_Wtime();
  if (my_rank == 0) {
      printf("Elapsed time: %f seconds\n", end_time - start_time);
-     printf("Average time per ping-pong: %f microseconds\n", 
-         ((end_time - start_time) / (2 * iterations)) * 1e6);
- }
+     printf("Average round trip time: %f microseconds\n", 
+         ((end_time - start_time) / (iterations)) * 1e6);
+     printf("Average one-way time: %f microseconds\n", 
+         ((end_time - start_time) / (2 * iterations)) * 1e6);           
+}
  MPI_Finalize();
  return 0;
 }
